@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Capacidade</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --white:#ffffff; --bg:#f2f4f7; --border:#e3e7ef; --border-dk:#c9d0df;
+  --t1:#111827; --t2:#374151; --t3:#6b7280; --t4:#9ca3af;
+  --navy:#0f2550; --blue:#1d4ed8; --blue-s:#eff6ff; --blue-m:#bfdbfe;
+  --green:#065f46; --green-s:#ecfdf5; --green-m:#6ee7b7;
+  --red:#991b1b; --red-s:#fff1f2;
+  --amber:#92400e; --amber-s:#fffbeb; --amber-m:#fcd34d;
+  --sh-xs:0 1px 2px rgba(0,0,0,.06);
+  --sh-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --r:6px; --r-lg:10px;
+  --sans:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+html{font-size:14px;}
+body{font-family:var(--sans);background:var(--bg);color:var(--t1);min-height:100vh;line-height:1.5;}
+
+/* ── Topbar ── */
+.topbar{height:3px;background:linear-gradient(90deg,var(--navy) 0%,#1d4ed8 100%);}
+
+/* ── Header ── */
+.header{background:var(--white);border-bottom:1px solid var(--border);padding:0 36px;height:56px;display:flex;align-items:center;gap:14px;box-shadow:var(--sh-xs);}
+.header-logo{width:30px;height:30px;background:var(--navy);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.header-logo svg{width:16px;height:16px;}
+.header-title{font-size:14px;font-weight:600;color:var(--t1);letter-spacing:-.15px;}
+.header-div{width:1px;height:18px;background:var(--border);margin:0 2px;}
+.header-sub{font-size:12px;color:var(--t4);}
+.header-space{flex:1;}
+.header-pill{font-size:11px;font-weight:500;color:var(--blue);background:var(--blue-s);border:1px solid var(--blue-m);padding:3px 10px;border-radius:20px;}
+
+/* ── Page ── */
+.page{max-width:1500px;margin:0 auto;padding:28px 36px 72px;}
+
+/* ── Stats ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-xs);}
+.stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--t4);margin-bottom:6px;}
+.stat-value{font-size:19px;font-weight:600;font-family:var(--mono);letter-spacing:-.5px;}
+.stat-value.green{color:var(--green);}.stat-value.blue{color:var(--blue);}.stat-value.amber{color:var(--amber);}.stat-value.red{color:var(--red);}
+.stat-bar{height:3px;border-radius:2px;margin-top:10px;background:var(--border);}
+.stat-bar span{display:block;height:100%;border-radius:2px;}
+.stat-bar.green span{background:#10b981;}.stat-bar.blue span{background:var(--blue);}.stat-bar.amber span{background:#f59e0b;}.stat-bar.red span{background:#ef4444;}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:2px;background:var(--border);border-radius:var(--r);padding:3px;width:fit-content;margin-bottom:24px;}
+.tab-btn{display:flex;align-items:center;gap:7px;padding:7px 18px;border:none;background:transparent;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--t3);border-radius:calc(var(--r) - 2px);transition:background .15s,color .15s;white-space:nowrap;}
+.tab-btn svg{width:14px;height:14px;}
+.tab-btn:hover{color:var(--t1);}
+.tab-btn.active{background:var(--white);color:var(--t1);box-shadow:var(--sh-xs);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── Card ── */
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;margin-bottom:16px;}
+.card-header{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.card-title{font-size:13px;font-weight:600;color:var(--t1);}
+.card-sub{font-size:11.5px;color:var(--t3);margin-top:1px;}
+.card-body{padding:20px 22px;}
+
+/* ── Formula strip ── */
+.formula-strip{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:0 var(--r) var(--r) 0;padding:10px 16px;margin-bottom:20px;flex-wrap:wrap;}
+.formula-strip .fl{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.8px;margin-right:4px;}
+.formula-strip code{font-family:var(--mono);font-size:12px;color:var(--t2);background:var(--border);padding:2px 8px;border-radius:4px;}
+.formula-strip .fs{color:var(--t4);font-size:15px;line-height:1;}
+
+/* ── Fields ── */
+.entry-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--t3);letter-spacing:.3px;text-transform:uppercase;margin-bottom:5px;}
+.field input,.field select{width:100%;height:36px;border:1px solid var(--border-dk);border-radius:var(--r);padding:0 10px;font-family:var(--mono);font-size:13px;color:var(--t1);background:var(--white);outline:none;transition:border-color .15s,box-shadow .15s;}
+.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.1);}
+.field input::placeholder{color:var(--t4);}
+
+.months-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-bottom:20px;}
+.month-field label{display:block;font-size:10px;font-weight:600;letter-spacing:.5px;color:var(--t4);text-transform:uppercase;margin-bottom:4px;text-align:center;}
+.month-field input{width:100%;height:34px;border:1px solid var(--border-dk);border-radius:var(--r);padding:0 6px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--t1);background:var(--white);outline:none;transition:border-color .15s,box-shadow .15s;}
+.month-field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,78,216,.1);}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:var(--r);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:background .15s;}
+.btn svg{width:14px;height:14px;}
+.btn-primary{background:var(--navy);color:var(--white);}
+.btn-primary:hover{background:#1a3a6e;}
+.btn-secondary{background:var(--bg);color:var(--t2);border:1px solid var(--border-dk);}
+.btn-secondary:hover{background:var(--border);}
+.row-actions{display:flex;align-items:center;gap:10px;}
+
+/* ── Row items ── */
+.row-item{background:var(--white);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;transition:box-shadow .15s;}
+.row-item:hover{box-shadow:var(--sh-sm);}
+.row-item-header{display:flex;align-items:center;gap:12px;padding:10px 16px;cursor:pointer;background:#fafafa;border-bottom:1px solid transparent;transition:background .15s;}
+.row-item-header:hover{background:var(--bg);}
+.row-item.open .row-item-header{border-bottom-color:var(--border);background:var(--bg);}
+.row-num{width:22px;height:22px;flex-shrink:0;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--t3);}
+.row-name{font-size:13px;font-weight:500;flex:1;color:var(--t1);}
+.row-meta{color:var(--t4);font-size:11px;margin-right:8px;}
+.row-cap{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--green);}
+.row-cap.zero{color:var(--t4);}
+.row-chevron{color:var(--t4);transition:transform .2s;flex-shrink:0;}
+.row-item.open .row-chevron{transform:rotate(180deg);}
+.row-item-body{display:none;padding:16px;}
+.row-item.open .row-item-body{display:block;}
+.row-delete{background:none;border:none;cursor:pointer;color:var(--t4);padding:4px;border-radius:var(--r);transition:color .15s,background .15s;}
+.row-delete:hover{color:var(--red);background:var(--red-s);}
+
+/* ── Param chips ── */
+.param-chips{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+.param-chip{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px;}
+.param-chip-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--t4);margin-bottom:3px;}
+.param-chip-value{font-family:var(--mono);font-size:12.5px;font-weight:500;color:var(--t1);}
+
+/* ── Month cells ── */
+.month-cells{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;}
+.mc{text-align:center;}
+.mc-label{font-size:10px;font-weight:600;letter-spacing:.5px;color:var(--t4);text-transform:uppercase;margin-bottom:3px;}
+.mc-val{font-family:var(--mono);font-size:11.5px;border-radius:4px;padding:4px 2px;}
+.mc-val.has{color:var(--t2);background:var(--blue-s);border:1px solid var(--blue-m);}
+.mc-val.empty{color:var(--border-dk);background:var(--bg);border:1px solid var(--border);}
+
+/* ── Results table ── */
+.table-wrap{overflow-x:auto;border-radius:var(--r-lg);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{background:#f8fafc;color:var(--t3);font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.8px;text-transform:uppercase;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+thead th.right{text-align:right;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:#fafbfc;}
+tbody td{padding:10px 14px;color:var(--t2);white-space:nowrap;}
+tbody td.mono{font-family:var(--mono);}
+tbody td.right{text-align:right;}
+tbody td.cap-ok{font-family:var(--mono);font-weight:600;color:var(--green);text-align:right;background:var(--green-s);}
+tbody td.cap-no{font-family:var(--mono);color:var(--t4);text-align:right;}
+tbody td.month{color:var(--t3);font-family:var(--mono);font-size:11.5px;text-align:right;}
+tfoot td{padding:10px 14px;font-weight:600;background:#f0f4f8;border-top:2px solid var(--border);font-family:var(--mono);font-size:13px;}
+tfoot td.tl{color:var(--t2);font-family:var(--sans);font-size:12px;font-weight:600;}
+tfoot td.tv{color:var(--navy);text-align:right;}
+
+/* ── Upload zone ── */
+.upload-zone{border:1.5px dashed var(--border-dk);border-radius:var(--r-lg);padding:40px 32px;display:flex;align-items:center;gap:24px;cursor:pointer;position:relative;transition:border-color .2s,background .2s;}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:var(--blue-s);}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon-wrap{width:52px;height:52px;flex-shrink:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;}
+.upload-icon-wrap svg{width:24px;height:24px;color:var(--t3);}
+.upload-text h3{font-size:14px;font-weight:600;margin-bottom:4px;}
+.upload-text p{font-size:12px;color:var(--t3);}
+.file-badge{display:none;align-items:center;gap:8px;margin-left:auto;flex-shrink:0;font-size:12px;font-weight:500;color:var(--green);background:var(--green-s);border:1px solid var(--green-m);padding:6px 14px;border-radius:var(--r);}
+.file-badge svg{width:13px;height:13px;}
+.file-badge.show{display:flex;}
+
+/* ── Notice ── */
+.notice{display:flex;align-items:flex-start;gap:10px;background:var(--amber-s);border:1px solid var(--amber-m);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:18px;}
+.notice svg{width:14px;height:14px;flex-shrink:0;margin-top:1px;}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:56px 24px;color:var(--t4);}
+.empty svg{width:36px;height:36px;margin:0 auto 12px;display:block;color:var(--border-dk);}
+.empty p{font-size:13px;}
+
+/* ── Error ── */
+.err{font-size:12px;color:var(--red);display:none;}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .entry-grid{grid-template-columns:repeat(2,1fr);}
+  .months-grid{grid-template-columns:repeat(6,1fr);}
+  .page{padding:20px 16px 60px;}
+  .header{padding:0 16px;}
+}
+</style>
+</head>
+<body>
+<div class="topbar"></div>
+
+<header class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  </div>
+  <span class="header-title">Simulador de Capacidade</span>
+  <div class="header-div"></div>
+  <span class="header-sub">Planejamento · MdO &amp; Equipamentos</span>
+  <span class="header-space"></span>
+  <span class="header-pill" id="headerPill">Sem dados</span>
+</header>
+
+<div class="page">
+
+  <!-- KPIs -->
+  <div class="stats-grid" id="statsGrid" style="display:none">
+    <div class="stat">
+      <div class="stat-label">Capacidade Total</div>
+      <div class="stat-value green" id="kpiTotal">—</div>
+      <div class="stat-bar green"><span style="width:100%"></span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Linhas Calculadas</div>
+      <div class="stat-value blue" id="kpiLinhas">—</div>
+      <div class="stat-bar blue"><span id="kpiLinhasBar" style="width:0%"></span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Média por Linha</div>
+      <div class="stat-value amber" id="kpiMedia">—</div>
+      <div class="stat-bar amber"><span style="width:60%"></span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Linhas sem Resultado</div>
+      <div class="stat-value red" id="kpiZero">—</div>
+      <div class="stat-bar red"><span id="kpiZeroBar" style="width:0%"></span></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('manual')" id="tab-manual">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Inserir Manualmente
+    </button>
+    <button class="tab-btn" onclick="switchTab('upload')" id="tab-upload">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Importar Planilha
+    </button>
+  </div>
+
+  <!-- ══════════ MANUAL ══════════ -->
+  <div class="tab-panel active" id="panel-manual">
+
+    <div class="formula-strip">
+      <span class="fl">Fórmula</span>
+      <code>Capacidade</code>
+      <span class="fs">=</span>
+      <code>(Média ÷ % MdO)</code>
+      <span class="fs">×</span>
+      <code>Tempo</code>
+      <span class="fs">×</span>
+      <code>Produt.</code>
+      <span class="fs">×</span>
+      <code>% Ativ. Capc.</code>
+      <span class="fs">×</span>
+      <code>Ref. R$/Eqp</code>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Nova Entrada</div>
+          <div class="card-sub">Preencha os parâmetros e os valores mensais, depois clique em Adicionar</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <!-- Params -->
+        <div class="entry-grid">
+          <div class="field" style="grid-column:span 2">
+            <label>Descrição / Identificação</label>
+            <input type="text" id="f-desc" placeholder="Ex.: Linha A · Equipamento 01">
+          </div>
+          <div class="field">
+            <label>Ref. R$/Eqp</label>
+            <input type="number" id="f-ref" placeholder="241962.31" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>Produt. (%)</label>
+            <input type="number" id="f-produt" placeholder="78" min="0" max="100" step="0.01">
+          </div>
+          <div class="field">
+            <label>% Ativ. Capc.</label>
+            <input type="number" id="f-ativ" placeholder="100" min="0" max="100" step="0.01">
+          </div>
+          <div class="field">
+            <label>% MdO / Total</label>
+            <input type="number" id="f-mdo" placeholder="42" min="0.01" max="100" step="0.01">
+          </div>
+        </div>
+
+        <!-- Months -->
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--t4);margin-bottom:8px">
+          Receita Mensal (R$) — preencha apenas os meses com dados
+        </div>
+        <div class="months-grid" id="monthInputs"></div>
+
+        <div class="row-actions">
+          <button class="btn btn-primary" onclick="adicionarLinha()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar Linha
+          </button>
+          <button class="btn btn-secondary" onclick="limparForm()">Limpar</button>
+          <span class="err" id="formErr"></span>
+        </div>
+      </div>
+    </div>
+
+    <div id="rowsContainer"></div>
+    <div id="manualResult"></div>
+  </div>
+
+  <!-- ══════════ UPLOAD ══════════ -->
+  <div class="tab-panel" id="panel-upload">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Importar Planilha Excel</div>
+          <div class="card-sub">Colunas esperadas: Média/Eqp 2026 · Tempo (Meses) · Ref. R$/Eqp · Produt. · %Ativ. Capc. · % Mdo/Total · Jan … Dez</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="notice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Os meses devem estar nomeados exatamente como:
+          <strong>&nbsp;Jan · Fev · Mar · Abr · Mai · Jun · Jul · Ago · Set · Out · Nov · Dez</strong>
+        </div>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept=".xlsx,.xls">
+          <div class="upload-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <div class="upload-text">
+            <h3>Arraste o arquivo aqui ou clique para selecionar</h3>
+            <p>Formatos aceitos: .xlsx · .xls</p>
+          </div>
+          <div class="file-badge" id="fileBadge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span id="fileBadgeName">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="uploadResult"></div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ═══════════ CONSTANTS ═══════════
+const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+// ═══════════ PARSE ═══════════
+// Converte qualquer representação para número float
+// Suporta: 241962.31  |  241.962,31  |  "R$ 241.962,31"  |  "78%"  |  0.78
+function parseNum(v) {
+  if (v === null || v === undefined || v === "") return 0;
+  if (typeof v === "number") return isNaN(v) ? 0 : v;
+  let s = v.toString().trim()
+    .replace(/R\$\s*/g, "")   // remove R$
+    .replace(/%$/, "")         // remove % no final
+    .trim();
+  // Detecta formato brasileiro (ponto como milhar, vírgula como decimal)
+  // Ex: "241.962,31"  → "241962.31"
+  // Ex: "12,8333"     → "12.8333"
+  // Mas NÃO alterar "0.78" (ponto decimal inglês sem vírgula)
+  if (s.includes(",")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  }
+  // se não tem vírgula, mantém o ponto decimal como está
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// Percentual para ENTRADA MANUAL: usuário digita 78, 100, 42 → divide por 100
+function parsePct(v) {
+  const n = parseNum(v);
+  return n >= 1 ? n / 100 : n;
+}
+// Percentual para PLANILHA: valores já chegam em decimal (0.78, 1.00, 0.42)
+// Usa parseNum direto, sem dividir
+function parsePctRaw(v) {
+  return parseNum(v);
+}
+
+function fmtBRL(v) {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+function fmtFloat(v) {
+  return v.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+}
+function fmtPct(v) {
+  return (v * 100).toFixed(2) + "%";
+}
+
+// ═══════════ BUSCA DE COLUNA (normalizada) ═══════════
+// Retorna o valor de uma coluna buscando por similaridade de nome
+// (ignora acentos, maiúsculas, espaços extras, _ vs espaço)
+function norm(s) {
+  return s.toString()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[_\s]+/g, "");
+}
+
+function getCol(row, ...names) {
+  const targets = names.map(n => norm(n));
+  for (const k of Object.keys(row)) {
+    const kn = norm(k);
+    if (targets.some(t => kn === t || kn.includes(t) || t.includes(kn))) {
+      return row[k];
+    }
+  }
+  return undefined;
+}
+
+// ═══════════ FÓRMULA PRINCIPAL ═══════════
+// Capacidade = (Media_eqp / %MdO) × Tempo × Produt × %Ativ × Ref
+// Onde:
+//   Media_eqp = coluna pré-calculada (float)
+//   Tempo     = quantidade de meses com valor > 0
+//   %MdO, Produt, %Ativ = já em decimal na planilha (0.42, 0.78, 1.00)
+//                         ou em inteiro na entrada manual (42, 78, 100)
+function calcCap(row) {
+  // Meses preenchidos
+  const mesesCom = MESES.filter(m => {
+    const v = row[m];
+    return v !== undefined && v !== "" && parseNum(v) > 0;
+  });
+  const tempo = mesesCom.length;
+  if (tempo === 0) return 0;
+
+  // Média: busca coluna Media_eqp (ou variações)
+  const mediaRaw = getCol(row, "Media_eqp", "Média/Eqp 2026", "Média/Eqp", "media_eqp", "mediaeqp");
+  const media = (mediaRaw !== undefined && parseNum(mediaRaw) > 0)
+    ? parseNum(mediaRaw)
+    : mesesCom.reduce((a, m) => a + parseNum(row[m]), 0) / tempo;
+
+  // Parâmetros — buscados por nome normalizado
+  const refRaw    = getCol(row, "Ref. R$/Eqp",  "ref_r_eqp",   "refreqp");
+  const produtRaw = getCol(row, "Produt.",       "produtividade","produt");
+  const ativRaw   = getCol(row, "%Ativ. Capc.",  "ativ_capc",   "atvcapc", "ativacao");
+  const mdoRaw    = getCol(row, "% Mdo/Total",   "mdo_total",   "mdototal","mdo");
+
+  const ref    = parseNum(refRaw);
+  // parsePct com limiar seguro: só divide por 100 se valor > 1.5
+  // Isso evita que 1.00 (= 100% decimal) seja erroneamente dividido
+  const produt = parseNum(produtRaw) > 1.5 ? parseNum(produtRaw)/100 : parseNum(produtRaw);
+  const ativ   = parseNum(ativRaw)   > 1.5 ? parseNum(ativRaw)/100   : parseNum(ativRaw);
+  const mdo    = parseNum(mdoRaw)    > 1.5 ? parseNum(mdoRaw)/100    : parseNum(mdoRaw);
+
+  if (mdo === 0) return 0;
+
+  return (media / mdo) * tempo * produt * ativ * ref;
+}
+
+// ═══════════ TABS ═══════════
+function switchTab(name) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("panel-" + name).classList.add("active");
+  document.getElementById("tab-" + name).classList.add("active");
+}
+
+// ═══════════ BUILD MONTH INPUTS ═══════════
+(function () {
+  const w = document.getElementById("monthInputs");
+  MESES.forEach(m => {
+    w.innerHTML += `<div class="month-field">
+      <label>${m}</label>
+      <input type="number" id="m-${m}" placeholder="—" min="0" step="0.01">
+    </div>`;
+  });
+})();
+
+// ═══════════ MANUAL STATE ═══════════
+let linhas = [];
+
+function limparForm() {
+  ["f-desc","f-ref","f-produt","f-ativ","f-mdo"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  MESES.forEach(m => { document.getElementById("m-" + m).value = ""; });
+  const e = document.getElementById("formErr");
+  e.style.display = "none";
+}
+
+function adicionarLinha() {
+  const desc   = document.getElementById("f-desc").value.trim() || ("Linha " + (linhas.length + 1));
+  const refV   = document.getElementById("f-ref").value;
+  const produtV= document.getElementById("f-produt").value;
+  const ativV  = document.getElementById("f-ativ").value;
+  const mdoV   = document.getElementById("f-mdo").value;
+  const err    = document.getElementById("formErr");
+
+  if (refV === "" || produtV === "" || ativV === "" || mdoV === "") {
+    err.textContent = "Preencha Ref. R$/Eqp, Produt., % Ativ. Capc. e % MdO/Total.";
+    err.style.display = "inline"; return;
+  }
+  const mdo = parseFloat(mdoV);
+  if (isNaN(mdo) || mdo <= 0) {
+    err.textContent = "% MdO/Total deve ser maior que zero.";
+    err.style.display = "inline"; return;
+  }
+  err.style.display = "none";
+
+  const row = {
+    "Descrição":    desc,
+    "Ref. R$/Eqp":  parseFloat(refV),
+    "Produt.":      parseFloat(produtV),
+    "%Ativ. Capc.": parseFloat(ativV),
+    "% Mdo/Total":  mdo,
+  };
+  MESES.forEach(m => {
+    const v = document.getElementById("m-" + m).value;
+    row[m] = v !== "" ? parseFloat(v) : "";
+  });
+  linhas.push(row);
+  limparForm();
+  renderManual();
+}
+
+function removerLinha(idx) { linhas.splice(idx, 1); renderManual(); }
+function toggleRow(idx) { document.getElementById("ri-" + idx).classList.toggle("open"); }
+
+function renderManual() {
+  const container = document.getElementById("rowsContainer");
+  const result    = document.getElementById("manualResult");
+
+  if (linhas.length === 0) {
+    container.innerHTML = "";
+    result.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+      </svg>
+      <p>Nenhuma linha adicionada. Use o formulário acima para inserir dados.</p>
+    </div>`;
+    atualizarKPIs([]);
+    return;
+  }
+
+  let html = "";
+  linhas.forEach((row, idx) => {
+    const cap = calcCap(row);
+    const mesesCom = MESES.filter(m => row[m] !== "" && row[m] !== undefined && parseNum(row[m]) > 0);
+    const tempo = mesesCom.length;
+    const media = tempo > 0 ? mesesCom.reduce((a,m) => a + parseNum(row[m]), 0) / tempo : 0;
+
+    html += `<div class="row-item" id="ri-${idx}">
+      <div class="row-item-header" onclick="toggleRow(${idx})">
+        <div class="row-num">${idx + 1}</div>
+        <div class="row-name">${row["Descrição"]}</div>
+        <span class="row-meta">${tempo} ${tempo === 1 ? "mês" : "meses"} · Média ${fmtFloat(media)}</span>
+        <div class="row-cap ${cap === 0 ? "zero" : ""}">${fmtBRL(cap)}</div>
+        <button class="row-delete" onclick="event.stopPropagation();removerLinha(${idx})" title="Remover">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <svg class="row-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="row-item-body">
+        <div class="param-chips">
+          ${chip("Ref. R$/Eqp",   fmtBRL(parseNum(row["Ref. R$/Eqp"])))}
+          ${chip("Produt.",        fmtPct(parsePct(row["Produt."])))}
+          ${chip("% Ativ. Capc.", fmtPct(parsePct(row["%Ativ. Capc."])))}
+          ${chip("% MdO / Total", fmtPct(parsePct(row["% Mdo/Total"])))}
+          ${chip("Tempo",          tempo + " meses")}
+        </div>
+        <div class="month-cells">
+          ${MESES.map(m => {
+            const v = row[m];
+            const has = v !== "" && v !== undefined && parseNum(v) > 0;
+            return `<div class="mc">
+              <div class="mc-label">${m}</div>
+              <div class="mc-val ${has ? "has" : "empty"}">${has ? fmtBRL(parseNum(v)) : "—"}</div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+  renderTable(linhas, result);
+  atualizarKPIs(linhas);
+}
+
+function chip(label, value) {
+  return `<div class="param-chip">
+    <div class="param-chip-label">${label}</div>
+    <div class="param-chip-value">${value}</div>
+  </div>`;
+}
+
+// ═══════════ SHARED RESULTS TABLE ═══════════
+function renderTable(dados, container) {
+  if (!dados || dados.length === 0) { container.innerHTML = ""; return; }
+
+  let total = 0, calculadas = 0;
+  let rows = "";
+
+  dados.forEach((row, i) => {
+    const cap = calcCap(row);
+    total += cap;
+    if (cap > 0) calculadas++;
+
+    const desc = row["Descrição"] || getCol(row,"descricao","nome","linha") || (i + 1);
+
+    // Busca media e tempo para exibição
+    const mediaRaw = getCol(row, "Media_eqp", "Média/Eqp 2026", "Média/Eqp");
+    const mesesCom = MESES.filter(m => row[m] !== "" && row[m] !== undefined && parseNum(row[m]) > 0);
+    const tempo    = mesesCom.length;
+    const media    = (mediaRaw !== undefined && parseNum(mediaRaw) > 0)
+      ? parseNum(mediaRaw)
+      : (tempo > 0 ? mesesCom.reduce((a,m) => a + parseNum(row[m]), 0) / tempo : 0);
+
+    const ref    = parseNum(getCol(row, "Ref. R$/Eqp",  "refreqp"));
+    const _p = parseNum(getCol(row, "Produt.",      "produt"));
+    const _a = parseNum(getCol(row, "%Ativ. Capc.", "atvcapc"));
+    const _m = parseNum(getCol(row, "% Mdo/Total",  "mdototal"));
+    const produt = _p > 1.5 ? _p/100 : _p;
+    const ativ   = _a > 1.5 ? _a/100 : _a;
+    const mdo    = _m > 1.5 ? _m/100 : _m;
+
+    rows += `<tr>
+      <td style="color:var(--t4);font-size:11.5px">${i+1}</td>
+      <td style="font-weight:500">${desc}</td>
+      <td class="mono right">${fmtFloat(media)}</td>
+      <td class="mono right">${tempo}</td>
+      <td class="mono right">${fmtBRL(ref)}</td>
+      <td class="mono right">${fmtPct(produt)}</td>
+      <td class="mono right">${fmtPct(ativ)}</td>
+      <td class="mono right">${fmtPct(mdo)}</td>
+      ${MESES.map(m => {
+        const n = parseNum(row[m]);
+        return `<td class="month">${n > 0 ? fmtBRL(n) : "<span style='color:var(--border)'>—</span>"}</td>`;
+      }).join("")}
+      <td class="${cap > 0 ? "cap-ok" : "cap-no"}">${fmtBRL(cap)}</td>
+    </tr>`;
+  });
+
+  container.innerHTML = `<div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Resultado da Simulação</div>
+        <div class="card-sub">${dados.length} linha${dados.length!==1?"s":""} · ${calculadas} com resultado</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Descrição</th>
+            <th class="right">Média Eqp</th>
+            <th class="right">Tempo</th>
+            <th class="right">Ref. R$/Eqp</th>
+            <th class="right">Produt.</th>
+            <th class="right">% Ativ.</th>
+            <th class="right">% MdO</th>
+            ${MESES.map(m => `<th class="right">${m}</th>`).join("")}
+            <th class="right" style="color:var(--navy)">▶ Capacidade</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <td class="tl" colspan="${8 + MESES.length}">Total Geral</td>
+            <td class="tv">${fmtBRL(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ═══════════ KPIs ═══════════
+function atualizarKPIs(dados) {
+  const grid = document.getElementById("statsGrid");
+  if (!dados || dados.length === 0) {
+    grid.style.display = "none";
+    document.getElementById("headerPill").textContent = "Sem dados";
+    return;
+  }
+  const caps = dados.map(r => calcCap(r));
+  const total = caps.reduce((a,b) => a+b, 0);
+  const calc  = caps.filter(c => c > 0).length;
+  const zeros = caps.filter(c => c === 0).length;
+  const media = calc > 0 ? total / calc : 0;
+
+  document.getElementById("kpiTotal").textContent  = fmtBRL(total);
+  document.getElementById("kpiLinhas").textContent = `${calc} / ${dados.length}`;
+  document.getElementById("kpiMedia").textContent  = fmtBRL(media);
+  document.getElementById("kpiZero").textContent   = zeros;
+  document.getElementById("kpiLinhasBar").style.width = (dados.length > 0 ? (calc/dados.length)*100 : 0) + "%";
+  document.getElementById("kpiZeroBar").style.width  = (dados.length > 0 ? (zeros/dados.length)*100 : 0) + "%";
+  document.getElementById("headerPill").textContent  = fmtBRL(total);
+  grid.style.display = "grid";
+}
+
+// ═══════════ UPLOAD ═══════════
+const uz = document.getElementById("uploadZone");
+uz.addEventListener("dragover", e => { e.preventDefault(); uz.classList.add("drag"); });
+uz.addEventListener("dragleave", () => uz.classList.remove("drag"));
+uz.addEventListener("drop", e => {
+  e.preventDefault(); uz.classList.remove("drag");
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+});
+document.getElementById("fileInput").addEventListener("change", function() {
+  if (this.files[0]) processFile(this.files[0]);
+});
+
+function processFile(file) {
+  document.getElementById("fileBadgeName").textContent = file.name;
+  document.getElementById("fileBadge").classList.add("show");
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    // raw:false → XLSX já converte números para float nativamente
+    const json = XLSX.utils.sheet_to_json(ws, { defval: "", raw: true });
+
+    // Adiciona campo Descrição se não existir
+    const norm_data = json.map((row, i) => {
+      const nr = {};
+      Object.keys(row).forEach(k => { nr[k.trim()] = row[k]; });
+      if (!nr["Descrição"]) {
+        nr["Descrição"] = getCol(nr,"descricao","nome","linha","distribuidor","parceiro") || `Linha ${i+1}`;
+      }
+      return nr;
+    });
+
+    renderTable(norm_data, document.getElementById("uploadResult"));
+    atualizarKPIs(norm_data);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Init
+renderManual();
+
+</script>
+</body>
+</html>
