@@ -817,7 +817,16 @@ function exportarExcel() {
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, "Simulação");
-  XLSX.writeFile(wb, "simulacao_capacidade.xlsx");
+  // Gera Blob e dispara download via link — compatível com Power BI e iframes
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob  = new Blob([wbout], { type: "application/octet-stream" });
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement("a");
+  a.href      = url;
+  a.download  = "simulacao_capacidade.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 200);
 }
 
 // Init
