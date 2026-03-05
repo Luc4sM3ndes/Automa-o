@@ -250,11 +250,22 @@ tfoot td.tv{color:var(--navy);text-align:right;}
         <div class="entry-grid">
           <div class="field">
             <label>Distribuidora</label>
-            <input type="text" id="f-dist" placeholder="Ex.: EQTL AP">
+            <select id="f-dist" onchange="atualizarRegionais()">
+              <option value="">Selecione...</option>
+              <option>EQTL_MA</option>
+              <option>EQTL_PA</option>
+              <option>EQTL_PI</option>
+              <option>EQTL_AL</option>
+              <option>EQTL_AP</option>
+              <option>EQTL_RS</option>
+              <option>EQTL_GO</option>
+            </select>
           </div>
           <div class="field">
             <label>Regional</label>
-            <input type="text" id="f-reg" placeholder="Ex.: Metropolitana">
+            <select id="f-reg">
+              <option value="">— selecione a distribuidora —</option>
+            </select>
           </div>
           <div class="field">
             <label>Ref. R$/Eqp</label>
@@ -748,6 +759,34 @@ function processFile(file) {
     atualizarKPIs(norm_data);
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ═══════════ REGIONAIS POR DISTRIBUIDORA ═══════════
+const REGIONAIS = {
+  "EQTL_MA": ["CENTRO","LESTE","NOROESTE","NORTE","SUL"],
+  "EQTL_PA": ["CENTRO","NORDESTE","NORTE","OESTE","SUL"],
+  "EQTL_PI": ["METROPOLITANA","PARNAÍBA","SUL","FLORIANO","PICOS"],
+  "EQTL_AL": ["OESTE","LESTE"],
+  "EQTL_AP": ["METROPOLITANA"],
+  "EQTL_RS": ["NORTE","SUL"],
+  "EQTL_GO": ["ANÁPOLIS","FORMOSA","GOIÂNIA","IPORÁ","LUZIÂNIA","METROPOLITANA","MONTES BELOS","MORRINHOS","RIO VERDE","URUAÇU"]
+};
+
+function atualizarRegionais() {
+  const dist = document.getElementById("f-dist").value;
+  const sel  = document.getElementById("f-reg");
+  sel.innerHTML = "";
+  if (!dist || !REGIONAIS[dist]) {
+    sel.innerHTML = '<option value="">— selecione a distribuidora —</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  REGIONAIS[dist].forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    sel.appendChild(opt);
+  });
 }
 
 // ═══════════ MÁSCARA MOEDA ═══════════
