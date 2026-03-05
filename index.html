@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulador de Capacidade - Âncora</title>
+<title>Simulador de Capacidade</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -227,7 +227,7 @@ tfoot td.tv{color:var(--navy);text-align:right;}
       <span class="fl">Fórmula</span>
       <code>Capacidade</code>
       <span class="fs">=</span>
-      <code>(Ref. R$/Eqp ÷ % MdO)</code>
+      <code>(Média ÷ % MdO)</code>
       <span class="fs">×</span>
       <code>Tempo</code>
       <span class="fs">×</span>
@@ -235,7 +235,7 @@ tfoot td.tv{color:var(--navy);text-align:right;}
       <span class="fs">×</span>
       <code>% Ativ. Capc.</code>
       <span class="fs">×</span>
-      <code>Méd/Eqp</code>
+      <code>Ref. R$/Eqp</code>
     </div>
 
     <div class="card">
@@ -248,9 +248,13 @@ tfoot td.tv{color:var(--navy);text-align:right;}
       <div class="card-body">
         <!-- Params -->
         <div class="entry-grid">
-          <div class="field" style="grid-column:span 2">
-            <label>Descrição / Identificação</label>
-            <input type="text" id="f-desc" placeholder="Ex.: Linha A · Equipamento 01">
+          <div class="field">
+            <label>Distribuidora</label>
+            <input type="text" id="f-dist" placeholder="Ex.: EQTL AP">
+          </div>
+          <div class="field">
+            <label>Regional</label>
+            <input type="text" id="f-reg" placeholder="Ex.: Metropolitana">
           </div>
           <div class="field">
             <label>Ref. R$/Eqp</label>
@@ -297,14 +301,13 @@ tfoot td.tv{color:var(--navy);text-align:right;}
       <div class="card-header">
         <div>
           <div class="card-title">Importar Planilha Excel</div>
-          <div class="card-sub">Colunas esperadas: Média/Eqp 2026 · Tempo (Meses) · Ref. R$/Eqp · Produt. · %Ativ. Capc. · % Mdo/Total · Jan … Dez</div>
+          <div class="card-sub">Cabeçalho na linha 2 · Distribuidora · Regional · Ref. R$/Eqp · Produt. (%) · %Ativ. Capc. · % Mdo/Total · Jan … Dez</div>
         </div>
       </div>
       <div class="card-body">
         <div class="notice">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Os meses devem estar nomeados exatamente como:
-          <strong>&nbsp;Jan · Fev · Mar · Abr · Mai · Jun · Jul · Ago · Set · Out · Nov · Dez</strong>
+          Cabeçalho na <strong>linha 2</strong>. Colunas esperadas: <strong>Distribuidora · Regional · Ref. R$/Eqp · Produt. (%) · %Ativ. Capc. · % Mdo/Total · Jan … Dez</strong>
         </div>
         <div class="upload-zone" id="uploadZone">
           <input type="file" id="fileInput" accept=".xlsx,.xls">
@@ -423,10 +426,10 @@ function calcCap(row) {
     : mesesCom.reduce((a, m) => a + parseNum(row[m]), 0) / tempo;
 
   // Parâmetros — buscados por nome normalizado
-  const refRaw    = getCol(row, "Ref. R$/Eqp",  "ref_r_eqp",   "refreqp");
-  const produtRaw = getCol(row, "Produt.",       "produtividade","produt");
-  const ativRaw   = getCol(row, "%Ativ. Capc.",  "ativ_capc",   "atvcapc", "ativacao");
-  const mdoRaw    = getCol(row, "% Mdo/Total",   "mdo_total",   "mdototal","mdo");
+  const refRaw    = getCol(row, "Ref. R$/Eqp",   "ref_r_eqp",    "refreqp");
+  const produtRaw = getCol(row, "Produt. (%)",   "Produt.",      "produtividade", "produt");
+  const ativRaw   = getCol(row, "%Ativ. Capc.",  "ativ_capc",    "atvcapc", "ativacao");
+  const mdoRaw    = getCol(row, "% Mdo/Total",   "mdo_total",    "mdototal", "mdo");
 
   const ref    = parseNum(refRaw);
   // parsePct com limiar seguro: só divide por 100 se valor > 1.5
@@ -463,7 +466,7 @@ function switchTab(name) {
 let linhas = [];
 
 function limparForm() {
-  ["f-desc","f-ref","f-produt","f-ativ","f-mdo"].forEach(id => {
+  ["f-dist","f-reg","f-ref","f-produt","f-ativ","f-mdo"].forEach(id => {
     document.getElementById(id).value = "";
   });
   MESES.forEach(m => { document.getElementById("m-" + m).value = ""; });
@@ -472,7 +475,9 @@ function limparForm() {
 }
 
 function adicionarLinha() {
-  const desc   = document.getElementById("f-desc").value.trim() || ("Linha " + (linhas.length + 1));
+  const dist   = document.getElementById("f-dist").value.trim();
+  const reg    = document.getElementById("f-reg").value.trim();
+  const desc   = [dist, reg].filter(Boolean).join(" · ") || ("Linha " + (linhas.length + 1));
   const refV   = document.getElementById("f-ref").value;
   const produtV= document.getElementById("f-produt").value;
   const ativV  = document.getElementById("f-ativ").value;
@@ -492,6 +497,8 @@ function adicionarLinha() {
 
   const row = {
     "Descrição":    desc,
+    "Distribuidora": dist,
+    "Regional":     reg,
     "Ref. R$/Eqp":  parseNum(refV),
     "Produt.":      parseFloat(produtV),
     "%Ativ. Capc.": parseFloat(ativV),
@@ -588,7 +595,9 @@ function renderTable(dados, container) {
     total += cap;
     if (cap > 0) calculadas++;
 
-    const desc = row["Descrição"] || getCol(row,"descricao","nome","linha") || (i + 1);
+    const dist = row["Distribuidora"] || "";
+    const reg  = row["Regional"] || "";
+    const desc = row["Descrição"] || [dist, reg].filter(Boolean).join(" · ") || (i + 1);
 
     // Busca media e tempo para exibição
     const mediaRaw = getCol(row, "Media_eqp", "Média/Eqp 2026", "Média/Eqp");
@@ -599,7 +608,7 @@ function renderTable(dados, container) {
       : (tempo > 0 ? mesesCom.reduce((a,m) => a + parseNum(row[m]), 0) / tempo : 0);
 
     const ref    = parseNum(getCol(row, "Ref. R$/Eqp",  "refreqp"));
-    const _p = parseNum(getCol(row, "Produt.",      "produt"));
+    const _p = parseNum(getCol(row, "Produt. (%)", "Produt.", "produt"));
     const _a = parseNum(getCol(row, "%Ativ. Capc.", "atvcapc"));
     const _m = parseNum(getCol(row, "% Mdo/Total",  "mdototal"));
     const produt = _p > 1.5 ? _p/100 : _p;
@@ -608,7 +617,8 @@ function renderTable(dados, container) {
 
     rows += `<tr>
       <td style="color:var(--t4);font-size:11.5px">${i+1}</td>
-      <td style="font-weight:500">${desc}</td>
+      <td style="font-weight:500">${dist || desc}</td>
+      <td style="color:var(--t3)">${reg}</td>
       <td class="mono right">${fmtFloat(media)}</td>
       <td class="mono right">${tempo}</td>
       <td class="mono right">${fmtBRL(ref)}</td>
@@ -649,7 +659,8 @@ function renderTable(dados, container) {
         <thead>
           <tr>
             <th>#</th>
-            <th>Descrição</th>
+            <th>Distribuidora</th>
+            <th>Regional</th>
             <th class="right">Média Eqp</th>
             <th class="right">Tempo</th>
             <th class="right">Ref. R$/Eqp</th>
@@ -663,7 +674,7 @@ function renderTable(dados, container) {
         <tbody>${rows}</tbody>
         <tfoot>
           <tr>
-            <td class="tl" colspan="${8 + MESES.length}">Total Geral</td>
+            <td class="tl" colspan="${9 + MESES.length}">Total Geral</td>
             <td class="tv">${fmtBRL(total)}</td>
           </tr>
         </tfoot>
@@ -714,16 +725,22 @@ function processFile(file) {
   reader.onload = function(e) {
     const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    // raw:false → XLSX já converte números para float nativamente
-    const json = XLSX.utils.sheet_to_json(ws, { defval: "", raw: true });
 
-    // Adiciona campo Descrição se não existir
+    // Cabeçalho na linha 2 (índice 1), dados a partir da linha 3
+    // range: começa na linha 2 (0-indexed = 1)
+    const json = XLSX.utils.sheet_to_json(ws, {
+      defval: "",
+      raw: true,
+      range: 1   // pula linha 1, usa linha 2 como header
+    });
+
     const norm_data = json.map((row, i) => {
       const nr = {};
       Object.keys(row).forEach(k => { nr[k.trim()] = row[k]; });
-      if (!nr["Descrição"]) {
-        nr["Descrição"] = getCol(nr,"descricao","nome","linha","distribuidor","parceiro") || `Linha ${i+1}`;
-      }
+      // Monta Descrição a partir de Distribuidora + Regional
+      const dist = nr["Distribuidora"] || "";
+      const reg  = nr["Regional"] || "";
+      nr["Descrição"] = [dist, reg].filter(Boolean).join(" · ") || `Linha ${i+1}`;
       return nr;
     });
 
@@ -770,7 +787,7 @@ function exportarExcel() {
   // Monta linhas para a planilha
   const wsData = [];
   // Cabeçalho
-  wsData.push(["#","Descrição","Média Eqp","Tempo","Ref. R$/Eqp","Produt.","% Ativ.","% MdO",
+  wsData.push(["#","Distribuidora","Regional","Média Eqp","Tempo","Ref. R$/Eqp","Produt.","% Ativ.","% MdO",
     ...MESES,"Capacidade Total"]);
 
   let total = 0;
@@ -778,7 +795,9 @@ function exportarExcel() {
     const cap = calcCap(row);
     total += cap;
 
-    const desc     = row["Descrição"] || getCol(row,"descricao","nome","linha") || (i+1);
+    const dist_e  = row["Distribuidora"] || "";
+    const reg_e   = row["Regional"] || "";
+    const desc_e  = row["Descrição"] || [dist_e, reg_e].filter(Boolean).join(" · ") || (i+1);
     const mediaRaw = getCol(row,"Media_eqp","Média/Eqp 2026","Média/Eqp");
     const mesesCom = MESES.filter(m => row[m] !== "" && row[m] !== undefined && parseNum(row[m]) > 0);
     const tempo    = mesesCom.length;
@@ -786,12 +805,12 @@ function exportarExcel() {
       ? parseNum(mediaRaw)
       : (tempo > 0 ? mesesCom.reduce((a,m) => a + parseNum(row[m]), 0) / tempo : 0);
 
-    const _p = parseNum(getCol(row,"Produt.","produt"));
+    const _p = parseNum(getCol(row,"Produt. (%)","Produt.","produt"));
     const _a = parseNum(getCol(row,"%Ativ. Capc.","atvcapc"));
     const _m = parseNum(getCol(row,"% Mdo/Total","mdototal"));
 
     wsData.push([
-      i+1, desc,
+      i+1, dist_e, reg_e,
       media, tempo,
       parseNum(getCol(row,"Ref. R$/Eqp","refreqp")),
       _p > 1.5 ? _p/100 : _p,
